@@ -40,6 +40,7 @@ exec(char *path, char **argv)
       continue;
     if(ph.memsz < ph.filesz)
       goto bad;
+		cprintf("va: %x  sz: %d\n", ph.va, ph.filesz);
     if((sz = allocuvm(pgdir, sz + PGSIZE, ph.va + ph.memsz + PGSIZE)) == 0) //Change? See vm.c
       goto bad;
     if(loaduvm(pgdir, (char*)ph.va, ip, ph.offset, ph.filesz) < 0) //Change?  See vm.c
