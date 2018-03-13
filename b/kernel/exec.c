@@ -1,4 +1,4 @@
-#include "types.h"
+#include "types.h" 
 #include "param.h"
 #include "mmu.h"
 #include "proc.h"
@@ -40,7 +40,7 @@ exec(char *path, char **argv)
       continue;
     if(ph.memsz < ph.filesz)
       goto bad;
-    if((sz = allocuvm(pgdir, sz, ph.va + ph.memsz)) == 0) //Change? See vm.c
+    if((sz = allocuvm(pgdir, sz + PGSIZE, ph.va + ph.memsz + PGSIZE)) == 0) //Change? See vm.c
       goto bad;
     if(loaduvm(pgdir, (char*)ph.va, ip, ph.offset, ph.filesz) < 0) //Change?  See vm.c
       goto bad;
