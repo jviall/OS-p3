@@ -62,8 +62,9 @@ mainc(void)
   cinit();
   sti();           // enable inturrupts
   userinit();      // first user process
-  cprintf("\npost sched\n");
+  cprintf("\npre sched\n");
   scheduler();     // start running processes
+  cprintf("\npost sched\n");
 }
 
 // common cpu init code

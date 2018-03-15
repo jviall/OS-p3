@@ -129,7 +129,7 @@ fork(void)
 {
   int i, pid;
   struct proc *np;
-
+	cprintf("IN FORK\n");
   // Allocate process.
   if((np = allocproc()) == 0)
     return -1;
