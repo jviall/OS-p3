@@ -62,7 +62,7 @@ mainc(void)
   cinit();
   sti();           // enable inturrupts
   userinit();      // first user process
-  cprintf("\npre sched\n");
+  cprintf("pre sched\n");
   scheduler();     // start running processes
   cprintf("\npost sched\n");
 }
