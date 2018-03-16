@@ -396,7 +396,7 @@ sys_mprotect(void)
 {
   void * addr; //check using between 0 and proc.sz?, addr + len?
   int len; //check using argint < 0
-  //how check page aligned? Walkdir?
+  
   if(argptr(0, (char **)&addr, sizeof(char *)) < 0){
 		//cprintf("mprotect(): argptr failed\n");
 		return -1;
@@ -405,6 +405,7 @@ sys_mprotect(void)
 		//cprintf("mprotect(): argint failed\n");
     return -1;
 	}
+  
 	if(mprotect(addr, len) < 0)
 		return -1;
   return 0;
@@ -418,8 +419,10 @@ sys_munprotect(void)
   
   if(argptr(0, (char **)&addr, sizeof(char *)) < 0)
 		return -1;
+  
   if(argint(1, &len) <  0)
     return -1;
+  
 	if(munprotect(addr, len) < 0)
 		return -1;
   return 0;
