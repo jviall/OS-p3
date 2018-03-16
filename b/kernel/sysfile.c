@@ -390,3 +390,29 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+
+int
+sys_mprotect(void)
+{
+  int addr; //check using between 0 and proc.sz?, addr + len?
+  int len; //check using argint < 0
+  //how check page aligned? Walkdir?
+  
+  if(argint(0, &len) <=  0)
+    {
+      return -1;
+    }
+  return 0;
+}
+
+int
+sys_munprotect(void)
+{
+  int len;
+  
+  if(argint(0, &len) <=  0)
+    {
+      return -1;
+    }
+  return 0;
+}
