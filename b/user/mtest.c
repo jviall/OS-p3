@@ -6,8 +6,8 @@
 int
 main(int argc, char *argv[])
 {
-  mprotect((void*)0, 1) ;
-  munprotect((void*)0, 1);
+  mprotect((void*)0x1001, 1) ;
+  munprotect((void*)0x1000, 1);
   printf(1, "mtest ran\n");
   exit();
 }

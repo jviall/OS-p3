@@ -364,3 +364,34 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   }
   return 0;
 }
+
+//BIT PROTECTION
+int
+mprotect(void * addr, int len){
+	uint i;
+	pte_t *pte;
+
+	if(addr != PGROUNDDOWN(addr))
+		return -1;
+	if(len <= 0)
+		return -1;
+	if((uint)addr < PGSIZE || (uint)addr > proc->sz || (uint)addr + len > proc->sz)
+		return -1;
+	for(i = (uint)addr; i < (uint)addr + len; i+=PGSIZE){
+		//if(pte = walkpgdir() )		
+	}
+	return 0;
+}
+int
+munprotect(void * addr, int len){
+	//uint i;
+	//pte_t *pte;
+
+	if(addr != PGROUNDDOWN(addr))
+		return -1;
+	if(len <= 0)
+		return -1;
+	if((uint)addr < PGSIZE || (uint)addr > proc->sz || (uint)addr + len > proc->sz)
+		return -1;
+	return 0;
+}
