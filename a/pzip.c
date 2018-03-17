@@ -37,15 +37,12 @@ int main(int argc, char *argv[]) {
 	int fp;
 	char * srcs[argc-1];
 	struct stat statbuff[argc-1];
-	int firstChar = -1;
-	char * curChar;
-	size_t runLength = 0;
 	size_t chunkSize = 0x100000; 	//1MB
 	int numChunks = 0;						// say "nun chucks"
 	struct segment * first = malloc(sizeof(struct segment));
 
 	//MMAP all our files to srcs[]
-	for(size_t i = 1; i < argc; i++){
+	for(int i = 1; i < argc; i++){
 		// open file i
 		if ((fp = open(argv[i], O_RDONLY)) < 0){
 			printf("my-zip: cannot open file\n");
@@ -56,6 +53,7 @@ int main(int argc, char *argv[]) {
 			printf("fstat error\n");
 			exit(1);
 		}
+		printf("File %d size = %d\n", i, (int)statbuff[i-1].st_size);
 		// mmap files
 		if ((srcs[i-1] = mmap (0, statbuff[i-1].st_size, PROT_READ, MAP_SHARED, fp, 0)) == (caddr_t) -1){
 			printf ("mmap error for input");
@@ -68,7 +66,7 @@ int main(int argc, char *argv[]) {
 	// Build linked list of segments
 	first->segNum = 1;
 	struct segment * curChunk = first;
-	for(size_t i = 1; i < argc; i++){
+	for(int i = 1; i < argc; i++){
 		int size = statbuff[i-1].st_size;
 		char * position = srcs[i-1];
 		//first segment
@@ -108,16 +106,22 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}//end linked list building
-
+	
+	//Zipperino
+	int firstChar = -1;
+	char * curChar;
+	size_t runLength = 0;
 	curChunk = first;
 	while(curChunk){
-		printf("\nTotal Chunks = %d | numChunk: %d | chunk length: %d\n", numChunks, curChunk->segNum, curChunk->len);
+		//printf("Total Chunks = %d | numChunk: %d | chunk length: %d\n", 
+				//numChunks, curChunk->segNum, curChunk->len);
+		//zip chunk
 	  for(int i = 0; i < curChunk->len ; i++){
 			curChar = (curChunk->ptr+i);
 			if(firstChar == -1) firstChar = *curChar;
 			if(*curChar == firstChar) runLength++;
 			else {	// end of run
-				printf("%ld%c", runLength, (char)(firstChar + 1));
+				printf("%ld-%c", runLength, (char)(firstChar));
 				//fwrite(&runLength, 4, 1, stdout);
 				//putc((char)firstChar, stdout);
 				firstChar = *curChar;
@@ -128,6 +132,6 @@ int main(int argc, char *argv[]) {
 		curChunk = curChunk->next;
 		free(prev); 
 	}
-	printf("%ld-%c", runLength, (char)(firstChar+1));
+	printf("%ld-%c", runLength, (char)(firstChar));
 	return 0;
 }
