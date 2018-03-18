@@ -214,12 +214,33 @@ int main(int argc, char *argv[]) {
 			pthread_mutex_unlock(&m);
 		}
 	}
-	printf("Producer finished: totalChunks=%d\n", totalChunks);
+	//printf("Producer finished: totalChunks=%d\n", totalChunks);
 	//wait for consumers
 	for(int i = 0; i < nthreads ; i++)
 		pthread_join(cid[i], NULL);
 	
-	//POST PROCESSING	
+	//POST PROCESSING
+	for(int i = 0; i<totalChunks; i++){
+		struct segment * old = first;
+		struct zipped * result = (results+i);
+		first=first->next;
+		free(old);
+		
+		for(int a = 0; a < result->numruns - 1; a++){
+			printf("|%d-",*(result->counts + a));
+			//fwrite(result->counts + a, sizeof(int), 1, stdout);	
+			fwrite(result->values + a, sizeof(char), 1, stdout);	
+		}
+		if(i < totalChunks-1 && *(result->values + result->numruns - 1) == *(results+i+1)->values){
+			(results+i+1)->counts[0] += *(result->counts+result->numruns-1);
+		}
+		else {
+			printf("%d-",*(result->counts + result->numruns - 1));
+			//fwrite(result->counts + result->numruns - 1, sizeof(int), 1, stdout);	
+			fwrite(result->values + result->numruns - 1, sizeof(char), 1, stdout);	
+		}
+		
+	}
 
 
 	return 0;
