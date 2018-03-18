@@ -37,8 +37,8 @@ pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t seg = PTHREAD_COND_INITIALIZER; 	//producers
 pthread_cond_t zip = PTHREAD_COND_INITIALIZER; 	//consumers
 
-#define chunkSize 0x10000 		//1MB
-#define MAXCHUNKS 10
+#define chunkSize 0x100000 		//1MB
+#define MAXCHUNKS 100
 struct segment * first;
 struct segment * last;
 struct segment * next;
@@ -50,32 +50,39 @@ struct zipped * results;
 void *zipSegment(void *arg){
 	while(1){
 		pthread_mutex_lock(&m);
-		//printf("Segment %d: ptr=%p, next=%p, last=%d\n", next->segNum, next->ptr, next->next, next->last);
+		printf("Segment %d, numChunks %d: ptr=%p, next=%p, last=%d\n", next->segNum, numChunks,next->ptr, next->next, next->last);
+		
 		if(next->last){															// NOTHING LEFT TO ZIP--TERMINATE
-			pthread_cond_signal(&seg);
+			pthread_cond_signal(&zip);
 			pthread_mutex_unlock(&m);
-			break;											
+			return NULL;											
 		}
-		while(next->next == NULL)
+
+		while(next->next == NULL || numChunks < 0){
+			if(next->last){															// NOTHING LEFT TO ZIP--TERMINATE
+				pthread_cond_signal(&zip);
+				pthread_mutex_unlock(&m);
+				return NULL;											
+			}
 			pthread_cond_wait(&zip, &m);
+		}
 		struct segment *mySeg = next;
 		next = next->next;													// move to next segment
 		numChunks--;
+		if(numChunks < 0)
+			printf("NUMCHUNKS IS NEGATIVE!!\n");
 		//printf("Allocate results (array of zipped structs)\n");
 		//make sure we have space to store this result
 		if (results == NULL || (results+totalChunks) == NULL)
 			results = realloc(results,sizeof(struct zipped)*(totalChunks+1));
-		pthread_cond_signal(&seg);
-		pthread_mutex_unlock(&m);
 
 		//printf("Allocate result\n");
 		//make room for worst case zipped result
-		struct zipped * result = (struct zipped *)malloc(sizeof(struct zipped));
-		result->counts = (int *)malloc(sizeof(int)*(mySeg->len+1));
-		if(result->counts == NULL) printf("malloc result->counts failed!\n");
-		result->values = (char *)malloc(sizeof(char)*(mySeg->len+1));
-		if(result->values == NULL) printf("malloc result->values failed!\n");
-
+		struct zipped * result = (struct zipped *)calloc(sizeof(struct zipped), 1);
+		//result->counts = (int *)malloc(sizeof(int)*(mySeg->len+1));
+		//if(result->counts == NULL) printf("malloc result->counts failed!\n");
+		//result->values = (char *)malloc(sizeof(char)*(mySeg->len+1));
+		//if(result->values == NULL) printf("malloc result->values failed!\n");
 
 		//do zip
 		int firstChar = -1;
@@ -88,34 +95,37 @@ void *zipSegment(void *arg){
 			if(firstChar == -1) firstChar = *curChar;
 			if(*curChar == firstChar) runLength++;
 			else {										// end of run
-				*(result->counts + result->numruns) = runLength;
-				*(result->values + result->numruns) = *curChar;
+				//*(result->counts + result->numruns) = runLength;
+				//*(result->values + result->numruns) = *curChar;
 				firstChar = *curChar;
 				runLength = 1;
 				result->numruns++;
 			}
-			//printf("Run Length=%d\n",runLength);
-			//printf("Seg #%d, numruns = %d--Run char:'%c', count=%d\n", mySeg->segNum, result->numruns, *(result->values+result->numruns-1), *(result->counts+result->numruns-1));
 		}
 		if(runLength > 0){
-			*(result->counts + result->numruns) = runLength;
-			*(result->values + result->numruns) = *curChar;
+			//*(result->counts + result->numruns) = runLength;
+			//*(result->values + result->numruns) = *curChar;
 			result->numruns++;
 		}
 
 		//printf("Reallocate result\n");
 		//reallocate to actual size of zipped results
-		result->counts = (int *)realloc(result->counts, (result->numruns+1)*sizeof(int));
-		if(result->counts == NULL) printf("realloc result->counts failed!\n");
-		result->values = (char *)realloc(result->values, (result->numruns+1)*sizeof(char));
-		if(result->values == NULL) printf("realloc result->values failed!\n");
-		
+		//result->counts = (int *)realloc(result->counts, (result->numruns+1)*sizeof(int));
+		//if(result->counts == NULL) printf("realloc result->counts failed!\n");
+		//result->values = (char *)realloc(result->values, (result->numruns+1)*sizeof(char));
+		//if(result->values == NULL) printf("realloc result->values failed!\n");
+
 		results[mySeg->segNum] = *result;
 		//free(result);
-		
-		printf("Segment %d finished. last run=%c%d, numChunks=%d\n", mySeg->segNum, *(result->values+result->numruns-1),*(result->counts+result->numruns-1), numChunks);
-		free(mySeg);
+
+
+		//printf("Segment %d finished. numruns=%d, last run=%c-%d, numChunks=%d\n", mySeg->segNum, result->numruns,*(result->values+result->numruns-1),*(result->counts+result->numruns-1), numChunks);
+		//free(mySeg);
+
+		pthread_cond_signal(&seg);
+		pthread_mutex_unlock(&m);
 	}
+	printf("Returning\n");
 	return NULL;
 }
 
@@ -133,7 +143,7 @@ int main(int argc, char *argv[]) {
 	int fp;
 	char * srcs[argc-1];
 	struct stat statbuff[argc-1];
-	numChunks = 0;						
+	numChunks = 1;						
 	totalChunks = 0;
 	int numFiles = argc-1;
 	first = (struct segment *)malloc(sizeof(struct segment));
@@ -195,6 +205,7 @@ int main(int argc, char *argv[]) {
 				last->len = size;
 				last->ptr = position;
 				size -= chunkSize;
+				printf("This segment: len=%d, ptr=%p, size=%d, last->next=%p\n", last->len, last->ptr, size, last->next);
 				last = newSeg;
 			}
 			else{
@@ -202,10 +213,13 @@ int main(int argc, char *argv[]) {
 				last->ptr = position;
 				position += chunkSize;
 				size -= chunkSize;
+				printf("This segment: len=%d, ptr=%p, size=%d, last->next=%p\n", last->len, last->ptr, size, last->next);
 				last = newSeg;	
 			}
-			if(i+1 == numFiles && size <= 0)	// set the last segment's last flag to true
+			if(i+1 == numFiles && size <= 0){	// set the last segment's last flag to true
+				printf("oooooeeee!!!!!!!!!!!************88\n");
 				last->last = 1;
+			}
 			pthread_cond_signal(&zip);
 			pthread_mutex_unlock(&m);
 		}
