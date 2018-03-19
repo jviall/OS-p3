@@ -80,10 +80,10 @@ void *zipSegment(void *arg){
 
 		//do zip
 		char * curChar = (mySeg->ptr);
-		int runLength = 1;
-		//zip chunk
+		int runLength = 1;		//zip chunk
 		result->numruns = 0;
-		for(int i = 0; i < mySeg->len ; i++){
+		for(int i = 0; i < mySeg->len-1 ; i++){
+
 			//printf("ptr=%c\n", *(mySeg->ptr+i));
 			curChar = (mySeg->ptr+i);
 			if(*curChar == *(curChar+1)) runLength++;
@@ -91,17 +91,18 @@ void *zipSegment(void *arg){
 				//printf("runLength=%d, curChar=%c\n", runLength, *curChar);
 				*(result->counts + result->numruns) = runLength;
 				*(result->values + result->numruns) = *curChar;
-				runLength = 1;
 				result->numruns++;
+				runLength = 1;
 			}
 		}
-		if(runLength > 0){
+		if(*curChar == *(mySeg->ptr+mySeg->len-1) ){
 				//printf("runLength=%d, curChar=%c\n", runLength, *curChar);
 			*(result->counts + result->numruns) = runLength;
-			*(result->values + result->numruns) = *curChar;
+			*(result->values + result->numruns) = *(mySeg->ptr+mySeg->len-1);
 			result->numruns++;
 		}
 
+		//printf("numRuns=%d\n", result->numruns);
 		//printf("Reallocate result\n");
 		//reallocate to actual size of zipped results
 		result->counts = (int *)realloc(result->counts, (result->numruns+1)*sizeof(int));
@@ -225,22 +226,25 @@ int main(int argc, char *argv[]) {
 		struct zipped * result = (results+i);
 		first=first->next;
 		free(old);
-		
+		//printf("Post Processing Chunk %d\n", i);
 		for(int a = 0; a < result->numruns-1; a++){
 			//printf("|%d-%d",*(result->counts + a),(int)*(result->values + a));
 			fwrite(result->counts + a, sizeof(int), 1, stdout);	
 			fwrite(result->values + a, sizeof(char), 1, stdout);	
 		}
 		if(i < totalChunks-1 && *(result->values + result->numruns - 1) == *(results+i+1)->values){
+			//printf("Adding %d + %d", (results+i+1)->counts[0], *(result->counts+result->numruns-1));
 			(results+i+1)->counts[0] += *(result->counts+result->numruns-1);
+			//printf(" = %d\n", (results+i+1)->counts[0]);
 		}
 		else {
-			printf("|%d-",*(result->counts + result->numruns - 1));
-			//fwrite(result->counts + result->numruns - 1, sizeof(int), 1, stdout);	
+			//printf("|%d-",*(result->counts + result->numruns - 1));
+			fwrite(result->counts + result->numruns - 1, sizeof(int), 1, stdout);	
 			fwrite(result->values + result->numruns - 1, sizeof(char), 1, stdout);	
 		}
-		
+		//free(result);
 	}
+	//free(first);
 
 
 	return 0;
