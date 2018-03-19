@@ -140,6 +140,7 @@ int main(int argc, char *argv[]) {
 
 	//MMAP all our files to srcs[]
 	for(int i = 0; i < numFiles; i++){
+		
 		// open file i
 		if ((fp = open(argv[i+1], O_RDONLY)) < 0){
 			printf("my-zip: cannot open file\n");
@@ -150,10 +151,14 @@ int main(int argc, char *argv[]) {
 			printf("fstat error\n");
 			exit(1);
 		}
+		if(statbuff[i].st_size <= 0){
+			srcs[i] = "";
+			continue;
+		}
 		//printf("File %d size = %d\n", i+1, (int)statbuff[i].st_size);
 		// mmap files
 		if ((srcs[i] = mmap (0, statbuff[i].st_size, PROT_READ, MAP_SHARED, fp, 0)) == (caddr_t) -1){
-			printf ("mmap error for input");
+			printf ("mmap error for input %d. size=%ld\n", i, statbuff[i].st_size);
 			return 0;
 		}
 		// close file i
@@ -228,7 +233,7 @@ int main(int argc, char *argv[]) {
 		free(old);
 		//printf("Post Processing Chunk %d\n", i);
 		for(int a = 0; a < result->numruns-1; a++){
-			//printf("|%d-%d",*(result->counts + a),(int)*(result->values + a));
+			//printf("|%d-%c",*(result->counts + a),(int)*(result->values + a));
 			fwrite(result->counts + a, sizeof(int), 1, stdout);	
 			fwrite(result->values + a, sizeof(char), 1, stdout);	
 		}
@@ -238,7 +243,7 @@ int main(int argc, char *argv[]) {
 			//printf(" = %d\n", (results+i+1)->counts[0]);
 		}
 		else {
-			//printf("|%d-",*(result->counts + result->numruns - 1));
+			//printf("|%d-%c",*(result->counts + result->numruns - 1),(int)*(result->values + result->numruns - 1));
 			fwrite(result->counts + result->numruns - 1, sizeof(int), 1, stdout);	
 			fwrite(result->values + result->numruns - 1, sizeof(char), 1, stdout);	
 		}
