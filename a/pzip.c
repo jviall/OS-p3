@@ -38,7 +38,7 @@ pthread_cond_t seg = PTHREAD_COND_INITIALIZER; 	//producers
 pthread_cond_t zip = PTHREAD_COND_INITIALIZER; 	//consumers
 
 #define chunkSize 0x100000 		//1MB
-#define MAXCHUNKS 100
+#define MAXCHUNKS 10
 struct segment * first;
 struct segment * last;
 struct segment * next;
@@ -79,24 +79,24 @@ void *zipSegment(void *arg){
 			if(result->values == NULL) printf("malloc result->values failed!\n");
 
 		//do zip
-		int firstChar = -1;
-		char * curChar;
-		int runLength = 0;
+		char * curChar = (mySeg->ptr);
+		int runLength = 1;
 		//zip chunk
 		result->numruns = 0;
 		for(int i = 0; i < mySeg->len ; i++){
+			//printf("ptr=%c\n", *(mySeg->ptr+i));
 			curChar = (mySeg->ptr+i);
-			if(firstChar == -1) firstChar = *curChar;
-			if(*curChar == firstChar) runLength++;
+			if(*curChar == *(curChar+1)) runLength++;
 			else {										// end of run
+				//printf("runLength=%d, curChar=%c\n", runLength, *curChar);
 				*(result->counts + result->numruns) = runLength;
 				*(result->values + result->numruns) = *curChar;
-				firstChar = *curChar;
 				runLength = 1;
 				result->numruns++;
 			}
 		}
 		if(runLength > 0){
+				//printf("runLength=%d, curChar=%c\n", runLength, *curChar);
 			*(result->counts + result->numruns) = runLength;
 			*(result->values + result->numruns) = *curChar;
 			result->numruns++;
@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
 	for(int i = 0; i < numFiles; i++){
 		int size = statbuff[i].st_size;
 		char * position = srcs[i];
-
+		//printf("segment %d's first char=%c\n", i, *srcs[i]);
 		//while this file can still be segmented
 		while(size > 0){
 			//Grab Lock 
@@ -227,16 +227,16 @@ int main(int argc, char *argv[]) {
 		free(old);
 		
 		for(int a = 0; a < result->numruns - 1; a++){
-			printf("|%d-",*(result->counts + a));
-			//fwrite(result->counts + a, sizeof(int), 1, stdout);	
+			//printf("|%d-",*(result->counts + a));
+			fwrite(result->counts + a, sizeof(int), 1, stdout);	
 			fwrite(result->values + a, sizeof(char), 1, stdout);	
 		}
 		if(i < totalChunks-1 && *(result->values + result->numruns - 1) == *(results+i+1)->values){
 			(results+i+1)->counts[0] += *(result->counts+result->numruns-1);
 		}
 		else {
-			printf("%d-",*(result->counts + result->numruns - 1));
-			//fwrite(result->counts + result->numruns - 1, sizeof(int), 1, stdout);	
+			//printf("|%d-",*(result->counts + result->numruns - 1));
+			fwrite(result->counts + result->numruns - 1, sizeof(int), 1, stdout);	
 			fwrite(result->values + result->numruns - 1, sizeof(char), 1, stdout);	
 		}
 		
