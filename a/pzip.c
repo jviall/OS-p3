@@ -226,8 +226,8 @@ int main(int argc, char *argv[]) {
 		first=first->next;
 		free(old);
 		
-		for(int a = 0; a < result->numruns - 1; a++){
-			//printf("|%d-",*(result->counts + a));
+		for(int a = 0; a < result->numruns-1; a++){
+			//printf("|%d-%d",*(result->counts + a),(int)*(result->values + a));
 			fwrite(result->counts + a, sizeof(int), 1, stdout);	
 			fwrite(result->values + a, sizeof(char), 1, stdout);	
 		}
@@ -235,8 +235,8 @@ int main(int argc, char *argv[]) {
 			(results+i+1)->counts[0] += *(result->counts+result->numruns-1);
 		}
 		else {
-			//printf("|%d-",*(result->counts + result->numruns - 1));
-			fwrite(result->counts + result->numruns - 1, sizeof(int), 1, stdout);	
+			printf("|%d-",*(result->counts + result->numruns - 1));
+			//fwrite(result->counts + result->numruns - 1, sizeof(int), 1, stdout);	
 			fwrite(result->values + result->numruns - 1, sizeof(char), 1, stdout);	
 		}
 		
