@@ -37,8 +37,8 @@ pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t seg = PTHREAD_COND_INITIALIZER; 	//producers
 pthread_cond_t zip = PTHREAD_COND_INITIALIZER; 	//consumers
 
-#define chunkSize 0x100000 		//1MB
-#define MAXCHUNKS 10
+#define chunkSize 0x1000000 		//1MB
+#define MAXCHUNKS 20
 struct segment * first;
 struct segment * last;
 struct segment * next;
@@ -231,12 +231,14 @@ int main(int argc, char *argv[]) {
 		struct zipped * result = (results+i);
 		first=first->next;
 		free(old);
+		char * zippers = calloc(result->numruns-1, sizeof(int)+sizeof(char));
 		//printf("Post Processing Chunk %d\n", i);
 		for(int a = 0; a < result->numruns-1; a++){
 			//printf("|%d-%c",*(result->counts + a),(int)*(result->values + a));
-			fwrite(result->counts + a, sizeof(int), 1, stdout);	
-			fwrite(result->values + a, sizeof(char), 1, stdout);	
+			*(int *)(zippers+a*5) = *(result->counts+a);
+			*(zippers+a*5+4) = *(result->values+a);
 		}
+		fwrite(zippers, sizeof(int)+sizeof(char), result->numruns-1, stdout);	
 		if(i < totalChunks-1 && *(result->values + result->numruns - 1) == *(results+i+1)->values){
 			//printf("Adding %d + %d", (results+i+1)->counts[0], *(result->counts+result->numruns-1));
 			(results+i+1)->counts[0] += *(result->counts+result->numruns-1);
