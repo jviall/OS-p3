@@ -57,12 +57,14 @@ mainc(void)
   if(!ismp)
     timerinit();   // uniprocessor timer
   bootothers();    // start other processors
-
+	
   // Finish setting up this processor in
   cinit();
   sti();           // enable inturrupts
   userinit();      // first user process
+  cprintf("pre sched\n");
   scheduler();     // start running processes
+  cprintf("\npost sched\n");
 }
 
 // common cpu init code

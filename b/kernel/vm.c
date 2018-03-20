@@ -195,7 +195,7 @@ inituvm(pde_t *pgdir, char *init, uint sz)
     panic("inituvm: more than a page");
   mem = kalloc();
   memset(mem, 0, PGSIZE);
-  mappages(pgdir, 0, PGSIZE, PADDR(mem), PTE_W|PTE_U);
+  mappages(pgdir, (void *)PGSIZE, PGSIZE, PADDR(mem), PTE_W|PTE_U);
   memmove(mem, init, sz);
 }
 
@@ -303,21 +303,35 @@ copyuvm(pde_t *pgdir, uint sz)
   pte_t *pte;
   uint pa, i;
   char *mem;
+  int writeFlag = 0;
 
   if((d = setupkvm()) == 0)
     return 0;
-  for(i = 0; i < sz; i += PGSIZE){
+  for(i = 0x1000; i < sz; i += PGSIZE){
+    writeFlag = 0;
     if((pte = walkpgdir(pgdir, (void*)i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
       panic("copyuvm: page not present");
+    if((*pte & PTE_W))
+      writeFlag = 1;
     pa = PTE_ADDR(*pte);
     if((mem = kalloc()) == 0)
       goto bad;
     memmove(mem, (char*)pa, PGSIZE);
+    if (writeFlag == 0)
+      {
+	 if(mappages(d, (void*)i, PGSIZE, PADDR(mem), PTE_U) < 0)
+      goto bad;
+      }
+    else
+      {
     if(mappages(d, (void*)i, PGSIZE, PADDR(mem), PTE_W|PTE_U) < 0)
       goto bad;
-  }
+    //Above is line to change, PTE_W to inherit parents entry's PTE_W
+      }
+      }
+    
   return d;
 
 bad:
@@ -363,4 +377,63 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
     va = va0 + PGSIZE;
   }
   return 0;
+}
+
+//BIT PROTECTION
+int
+mprotect(void * addr, int len){
+        uint i;
+        pte_t *pte;
+
+	i = (uint)addr;
+	//	if((pte =  walkpgdir(proc->pgdir, (void*)0x1000, 0) == 0 ))
+	// return -1; pte = walkpgdir(proc->pgdir, (void*) i, 0);
+	
+	if(addr != PGROUNDDOWN(addr))//Check page aligned
+		return -1;
+	if(len <= 0)//Check len not negative
+		return -1;
+	if((uint)addr < PGSIZE || (uint)addr > proc->sz ||
+	   (uint)addr + len * PGSIZE > proc->sz) //Check addr valid
+		return -1;
+	
+	for(i = (uint)addr; i < (uint)addr + len*PGSIZE; i+=PGSIZE)
+	  {
+	  //For every page between addr and addr + len
+	  
+	  pte = walkpgdir(proc->pgdir, (void*) i, 0);
+	  *pte |= PTE_W;
+	  *pte ^= PTE_W;
+	  //Change PTE_W to 0
+	  }
+	lcr3((uint)(proc->pgdir));
+	  //call that thing that lets hardware know something changed
+	return 0;
+}
+
+int
+munprotect(void * addr, int len){
+	uint i;
+	pte_t *pte;
+
+	if(addr != PGROUNDDOWN(addr))
+		return -1;
+	if(len <= 0)
+		return -1;
+	if((uint)addr < PGSIZE || (uint)addr > proc->sz ||
+	   (uint)addr + len * PGSIZE > proc->sz)
+		return -1;
+
+	for(i = (uint)addr; i < (uint)addr + len*PGSIZE; i+=PGSIZE)
+	  {
+	  //For every page between addr and addr + len
+	  
+	  pte = walkpgdir(proc->pgdir, (void*) i, 0);
+	  *pte |= PTE_W;
+	  //Change PTE_W to 0
+	  }
+
+	  //call that thing that lets hardware know something changed
+	  lcr3((uint)(proc->pgdir));
+	return 0;
 }
