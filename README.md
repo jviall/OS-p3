@@ -1,2 +1,7 @@
 # OS-p3
-p3a and p3b
+
+## Part A
+A small, multi-threaded, file-zipping program that compresses via run-length encoding. It could be a lot faster.
+
+# Part B
+An improvement upon the small xv6 OS's memory protection (or lack there of) per process.
